@@ -1,31 +1,41 @@
-import os, difflib, filecmp, tempfile
+import os, difflib, filecmp, tempfile, glob
 
 from qgis.core import QgsProject
 from qgis import processing
 from qgis.utils import iface
+from qgis.core import QgsApplication
 
+try:
+    import git
+    systemdir = os.path.join(os.sep.join(__file__.split(os.sep)[:-2]), 'qgis2fds')
+    repo = git.Repo(systemdir)
+    sha = repo.head.object.hexsha
+    githash = sha[:7]
+    if repo.is_dirty():
+        githash = githash + '-dirty'
+except:
+    githash = ''
 
 def main():
-    test_path = "/home/egissi/github/qgisfds.verification/tests/"
+    test_path = "tests/"
     algorithm = "Export to NIST FDS:Export terrain"
-    project = QgsProject.instance()
-
+    logfile = "log.txt"
+    with open(logfile, 'w') as f:
+        f.write('Starting qgis2fds verification\n')
     # Test
+    project = QgsProject.instance()
     test_name = "Export GEOM from cern_meyrin"
     test_dir = "test_cern_meyrin"
     test_filename = "cern_meyrin.qgs"
     parameters = {
         "cell_size": 1,
-        "chid": "cern_meyrin",
-        "dem_layer": os.path.join(
-            test_path,
-            test_dir,
-            "format_6_grid_asc_meyrin_dtm_20200522_122939/MN_Surface_2017_GRID.asc",
-        ),
+        "pixel_size": 1,
+        "chid": "cern_meyrin_geom",
+        "dem_layer": os.path.join(test_path,test_dir,"data_layers","dem_layer.tif"),
         "dem_sampling": 2,
         "export_obst": False,
         "extent": "6.048008498,6.049552799,46.232493265,46.233460112 [EPSG:4326]",
-        "fds_path": "./fds_geom",
+        "fds_path": os.path.join(test_path, test_dir,"output"),
         "fire_layer": None,
         "landuse_layer": None,
         "landuse_type_filepath": "",
@@ -35,8 +45,9 @@ def main():
         "tex_layer": None,
         "tex_pixel_size": 0.1,
         "wind_filepath": "",
+        "addIntermediateLayersToQgis": True,
     }
-
+    
     test(
         project=project,
         test_name=test_name,
@@ -45,23 +56,27 @@ def main():
         test_filename=test_filename,
         algorithm=algorithm,
         parameters=parameters,
+        logfile=logfile,
     )
-
+    
+    project.removeAllMapLayers()
+    project.clear()
+    QgsApplication.processEvents()
+    
     # Test
+    project = QgsProject.instance()
     test_name = "Export OBST from cern_meyrin"
+    test_dir = "test_cern_meyrin"
     test_filename = "cern_meyrin.qgs"
     parameters = {
         "cell_size": 1,
-        "chid": "cern_meyrin",
-        "dem_layer": os.path.join(
-            test_path,
-            test_dir,
-            "format_6_grid_asc_meyrin_dtm_20200522_122939/MN_Surface_2017_GRID.asc",
-        ),
+        "pixel_size": 1,
+        "chid": "cern_meyrin_obst",
+        "dem_layer": os.path.join(test_path,test_dir,"data_layers","dem_layer.tif"),
         "dem_sampling": 2,
         "export_obst": True,
         "extent": "6.048008498,6.049552799,46.232493265,46.233460112 [EPSG:4326]",
-        "fds_path": "./fds_obst",
+        "fds_path": os.path.join(test_path, test_dir,"output"),
         "fire_layer": None,
         "landuse_layer": None,
         "landuse_type_filepath": "",
@@ -71,8 +86,9 @@ def main():
         "tex_layer": None,
         "tex_pixel_size": 0.1,
         "wind_filepath": "",
+        "addIntermediateLayersToQgis": True,
     }
-
+    
     test(
         project=project,
         test_name=test_name,
@@ -81,44 +97,39 @@ def main():
         test_filename=test_filename,
         algorithm=algorithm,
         parameters=parameters,
+        logfile=logfile,
     )
-
+    
+    project.removeAllMapLayers()
+    project.clear()
+    QgsApplication.processEvents()
+    
     # Test
-
+    project = QgsProject.instance()
     test_name = "Export GEOM from test_golden_gate_local"
     test_dir = "test_golden_gate_local"
     test_filename = "golden_gate_local.qgs"
     parameters = {
         "cell_size": 10,
-        "chid": "golden_gate_local",
-        "dem_layer": os.path.join(
-            test_path,
-            test_dir,
-            "US_DEM2016_local.tif",
-        ),
+        "pixel_size": 30,
+        "chid": "golden_gate_local_geom",
+        "dem_layer": os.path.join(test_path,test_dir,"data_layers","US_DEM2016_local.tif"),
         "dem_sampling": 1,
         "export_obst": False,
         "extent": "-122.491206899,-122.481181391,37.827810126,37.833676214 [EPSG:4326]",
-        "fds_path": "./fds_geom",
-        "fire_layer": os.path.join(
-            test_path,
-            test_dir,
-            "fire.shx|layername=fire",
-        ),
-        "landuse_layer": os.path.join(
-            test_path,
-            test_dir,
-            "US_200F13_20_local.tif",
-        ),
-        "landuse_type_filepath": "./Landfire.gov_F13.csv",
+        "fds_path": os.path.join(test_path, test_dir,"output"),
+        "fire_layer": os.path.join(test_path,test_dir,"data_layers","fire.shx|layername=fire"),
+        "landuse_layer": os.path.join(test_path,test_dir,"data_layers","US_200F13_20_local.tif"),
+        "landuse_type_filepath": "Landfire.gov_F13.csv",
         "nmesh": 4,
         "origin": "-2279076.207440,1963675.963121 [EPSG:5070]",
         "sampling_layer": "TEMPORARY_OUTPUT",
-        "tex_layer": "crs=EPSG:3857&format&type=xyz&url=https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0",
+        "tex_layer": os.path.join(test_path,test_dir,"data_layers","OpenStreetMap.tif"),
         "tex_pixel_size": 1,
-        "wind_filepath": "./wind.csv",
+        "wind_filepath": "wind.csv",
+        "addIntermediateLayersToQgis": True,
     }
-
+    
     test(
         project=project,
         test_name=test_name,
@@ -127,42 +138,37 @@ def main():
         test_filename=test_filename,
         algorithm=algorithm,
         parameters=parameters,
+        logfile=logfile,
     )
-
+    
+    project.removeAllMapLayers()
+    project.clear()
+    QgsApplication.processEvents()
+    
     # Test
-
+    project = QgsProject.instance()
     test_name = "Export OBST from test_golden_gate_local"
     test_dir = "test_golden_gate_local"
     test_filename = "golden_gate_local.qgs"
     parameters = {
         "cell_size": 10,
-        "chid": "golden_gate_local",
-        "dem_layer": os.path.join(
-            test_path,
-            test_dir,
-            "US_DEM2016_local.tif",
-        ),
+        "pixel_size": 30,
+        "chid": "golden_gate_local_obst",
+        "dem_layer": os.path.join(test_path,test_dir,"data_layers","US_DEM2016_local.tif"),
         "dem_sampling": 1,
         "export_obst": True,
         "extent": "-122.491206899,-122.481181391,37.827810126,37.833676214 [EPSG:4326]",
-        "fds_path": "./fds_obst",
-        "fire_layer": os.path.join(
-            test_path,
-            test_dir,
-            "fire.shx|layername=fire",
-        ),
-        "landuse_layer": os.path.join(
-            test_path,
-            test_dir,
-            "US_200F13_20_local.tif",
-        ),
-        "landuse_type_filepath": "./Landfire.gov_F13.csv",
+        "fds_path": os.path.join(test_path, test_dir,"output"),
+        "fire_layer": os.path.join(test_path,test_dir,"data_layers","fire.shx|layername=fire"),
+        "landuse_layer": os.path.join(test_path,test_dir,"data_layers","US_200F13_20_local.tif"),
+        "landuse_type_filepath": "Landfire.gov_F13.csv",
         "nmesh": 4,
         "origin": "-2279076.207440,1963675.963121 [EPSG:5070]",
         "sampling_layer": "TEMPORARY_OUTPUT",
-        "tex_layer": "crs=EPSG:3857&format&type=xyz&url=https://tile.openstreetmap.org/%7Bz%7D/%7Bx%7D/%7By%7D.png&zmax=19&zmin=0",
+        "tex_layer": os.path.join(test_path,test_dir,"data_layers","OpenStreetMap.tif"),
         "tex_pixel_size": 1,
-        "wind_filepath": "./wind.csv",
+        "wind_filepath": "wind.csv",
+        "addIntermediateLayersToQgis": True,
     }
 
     test(
@@ -173,11 +179,16 @@ def main():
         test_filename=test_filename,
         algorithm=algorithm,
         parameters=parameters,
+        logfile=logfile,
     )
-
-    # Close
-
+    
+    project.removeAllMapLayers()
     project.clear()
+    QgsApplication.processEvents()
+    project = QgsProject.instance()
+    
+    # Close
+    
     iface.actionExit().trigger()
     os._exit(0)
 
@@ -193,7 +204,7 @@ class bcolors:
     UNDERLINE = "\033[4m"
 
 
-def test(project, test_name, test_path, test_dir, test_filename, algorithm, parameters):
+def test(project, test_name, test_path, test_dir, test_filename, algorithm, parameters, logfile):
     # Read test file
     test_filepath = os.path.join(test_path, test_dir, test_filename)
     print(f"\n{bcolors.HEADER}Start test: <{test_name}>{bcolors.ENDC}")
@@ -203,11 +214,17 @@ def test(project, test_name, test_path, test_dir, test_filename, algorithm, para
 
     # Run test
     refdir = parameters["fds_path"]
-    with tempfile.TemporaryDirectory() as tmpdir:
-        parameters["fds_path"] = tmpdir
-        processing.run(algorithm, parameters)
-        refdir = os.path.join(test_path, test_dir, "_ref", refdir)
-        diff_fds_dir(refpath=refdir, fdspath=tmpdir)
+    parameters["fds_path"] = os.path.abspath(parameters['fds_path'])
+    refdir = os.path.abspath(os.path.join(test_path, test_dir, "_ref"))
+    os.system('rm %s/*.fds'%(parameters["fds_path"]))
+    os.system('rm %s/*.bingeom'%(parameters["fds_path"]))
+    os.system('rm %s/*.png'%(parameters["fds_path"]))
+    with open(logfile, 'a') as f:
+        f.write('\nStarting ' + parameters['chid'])
+    processing.run(algorithm, parameters)
+    with open(logfile, 'a') as f:
+        f.write('\n' + parameters['chid'] + ' Results:')
+    diff_fds_dir(parameters['chid'], refpath=refdir, fdspath=parameters["fds_path"], logfile=logfile)
 
 
 def echo(name, success, log):
@@ -217,24 +234,25 @@ def echo(name, success, log):
         print(f"{bcolors.FAIL}{name}: FAIL{bcolors.ENDC}\n{log}")
 
 
-def diff_fds_dir(refpath, fdspath):
-    for f in os.scandir(refpath):
-        name = f"Diff: {f.name}"
-        filepath1 = f.path
-        filepath2 = os.path.join(fdspath, f.name)
-
-        if f.name.endswith(".bingeom") or f.name.endswith(".png"):
-            success, log = _diff_binary_files(filepath1, filepath2)
-        elif f.name.endswith(".fds"):
-            success, log = _diff_fds_files(filepath1, filepath2)
+def diff_fds_dir(chid, refpath, fdspath, logfile):
+    refFiles = glob.glob(os.path.join(refpath, chid+'*'))
+    for f in refFiles:
+        name = f.split(os.sep)[-1]
+        fdsFile = os.path.join(fdspath, name)
+        if name.endswith(".bingeom") or name.endswith(".png"):
+            success, log = _diff_binary_files(f, fdsFile)
+        elif name.endswith(".fds"):
+            success, log = _diff_fds_files(f, fdsFile)
         else:
-            success, log = False, f"Unrecognized file type: {f.name}"
+            success, log = False, f"Unrecognized file type: {name}"
         echo(name, success, log)
+        with open(logfile, 'a') as f:
+            f.write('\n    '+log)
 
 
 def _diff_binary_files(filepath1, filepath2):
     if filecmp.cmp(filepath1, filepath2):
-        return True, str()
+        return True, "Binary the same"
     else:
         return False, "Binary different"
 
