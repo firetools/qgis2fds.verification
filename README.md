@@ -1,7 +1,8 @@
+BEWARE: THIS REPO IS ARCHIVED AND READ ONLY
+
 # *qgis2fds* verification repository
 
 This **was** the repository of verification tools for *qgis2fds*.
-
 Verification cases are now integrated into the main repository at [qgis2fds repo](https://github.com/firetools/qgis2fds).
 
 ## How to verify the code
